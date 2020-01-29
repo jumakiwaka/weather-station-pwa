@@ -161,8 +161,8 @@
     let url = 'https://weather-ydn-yql.media.yahoo.com/forecastrss';
     let method = 'GET';
     let app_id = 'Xri1A47e';
-    let consumer_key = 'dj0yJmk9U24wd2RrTlRuaThjJmQ9WVdrOVdISnBNVUUwTjJVbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PWNj';
-    let consumer_secret = '1352c7414fb16aedf163ec6c1d86fda3f306043d';
+    let consumer_key = 'your_consumer_key';
+    let consumer_secret = 'your_consumer_secret';
     let concat = '&';
     let query = latitude && longitude ? { 'lat': latitude, 'lon': longitude, 'format': 'json' } : { 'location': label, 'format': 'json' };
     let oauth = {
