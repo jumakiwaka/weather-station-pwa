@@ -1,7 +1,6 @@
 
-(function() {
+(function () {
   'use strict';
-
   var app = {
     isLoading: true,
     visibleCards: {},
@@ -20,17 +19,17 @@
    *
    ****************************************************************************/
 
-  document.getElementById('butRefresh').addEventListener('click', function() {
+  document.getElementById('butRefresh').addEventListener('click', function () {
     // Refresh all of the forecasts
     app.updateForecasts();
   });
 
-  document.getElementById('butAdd').addEventListener('click', function() {
+  document.getElementById('butAdd').addEventListener('click', function () {
     // Open/show the add new city dialog
     app.toggleAddDialog(true);
   });
 
-  document.getElementById('butAddCity').addEventListener('click', function() {
+  document.getElementById('butAddCity').addEventListener('click', function () {
     // Add the newly selected city
     var select = document.getElementById('selectCityToAdd');
     var selected = select.options[select.selectedIndex];
@@ -40,12 +39,12 @@
       app.selectedCities = [];
     }
     app.getForecast(key, label);
-    app.selectedCities.push({key: key, label: label});
+    app.selectedCities.push({ key: key, label: label });
     app.saveSelectedCities();
     app.toggleAddDialog(false);
   });
 
-  document.getElementById('butAddCancel').addEventListener('click', function() {
+  document.getElementById('butAddCancel').addEventListener('click', function () {
     // Close the add new city dialog
     app.toggleAddDialog(false);
   });
@@ -58,7 +57,7 @@
    ****************************************************************************/
 
   // Toggles the visibility of the add new city dialog.
-  app.toggleAddDialog = function(visible) {
+  app.toggleAddDialog = function (visible) {
     if (visible) {
       app.addDialog.classList.add('dialog-container--visible');
     } else {
@@ -68,7 +67,7 @@
 
   // Updates a weather card with the latest weather forecast. If the card
   // doesn't already exist, it's cloned from the template.
-  app.updateForecastCard = function(data) {
+  app.updateForecastCard = function (data) {
     var dataLastUpdated = new Date(data.created);
     var sunrise = data.channel.astronomy.sunrise;
     var sunset = data.channel.astronomy.sunset;
@@ -150,10 +149,10 @@
    * request goes through, then the card gets updated a second time with the
    * freshest data.
    */
-  app.getForecast = function(key, label) {
+  app.getForecast = function (key, label) {
     var statement = 'select * from weather.forecast where woeid=' + key;
     var url = 'https://query.yahooapis.com/v1/public/yql?format=json&q=' +
-        statement;
+      statement;
     // TODO add cache logic here
     if ('caches' in window) {
       /*
@@ -161,7 +160,7 @@
        * data. If the service worker has the data, then display the cached
        * data while the app fetches the latest data.
        */
-      caches.match(url).then(function(response) {
+      caches.match(url).then(function (response) {
         if (response) {
           response.json().then(function updateFromCache(json) {
             var results = json.query.results;
@@ -175,7 +174,8 @@
     }
     // Fetch the latest data.
     var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
+
+    request.onreadystatechange = function () {
       if (request.readyState === XMLHttpRequest.DONE) {
         if (request.status === 200) {
           var response = JSON.parse(request.response);
@@ -192,24 +192,92 @@
     };
     request.open('GET', url);
     request.send();
+
+    // let url = 'https://weather-ydn-yql.media.yahoo.com/forecastrss';
+    // let method = 'GET';
+    // let app_id = 'Xri1A47e';
+    // let consumer_key = 'dj0yJmk9U24wd2RrTlRuaThjJmQ9WVdrOVdISnBNVUUwTjJVbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PWNj';
+    // let consumer_secret = '1352c7414fb16aedf163ec6c1d86fda3f306043d';
+    // let concat = '&';
+    // let query = { 'location': 'sunnyvale,ca', 'format': 'json' };
+    // let oauth = {
+    //   'oauth_consumer_key': consumer_key,
+    //   'oauth_nonce': Math.random().toString(36).substring(2),
+    //   'oauth_signature_method': 'HMAC-SHA1',
+    //   'oauth_timestamp': parseInt(new Date().getTime() / 1000).toString(),
+    //   'oauth_version': '1.0'
+    // };
+
+    // let merged = {};
+    // $.extend(merged, query, oauth);
+    // // Note the sorting here is required
+    // var merged_arr = Object.keys(merged).sort().map(function (k) {
+    //   return [k + '=' + encodeURIComponent(merged[k])];
+    // });
+    // let signature_base_str = method
+    //   + concat + encodeURIComponent(url)
+    //   + concat + encodeURIComponent(merged_arr.join(concat));
+
+    // let composite_key = encodeURIComponent(consumer_secret) + concat;
+    // let hash = CryptoJS.HmacSHA1(signature_base_str, composite_key);
+    // let signature = hash.toString(CryptoJS.enc.Base64);
+
+    // oauth['oauth_signature'] = signature;
+    // let auth_header = 'OAuth ' + Object.keys(oauth).map(function (k) {
+    //   return [k + '="' + oauth[k] + '"'];
+    // }).join(',');
+
+    // // TODO add cache logic here
+    // if ('caches' in window) {
+    //   /*
+    //    * Check if the service worker has already cached this city's weather
+    //    * data. If the service worker has the data, then display the cached
+    //    * data while the app fetches the latest data.
+    //    */
+    //   caches.match(url).then(function (response) {
+    //     if (response) {
+    //       response.json().then(function updateFromCache(json) {
+    //         var results = json.query.results;
+    //         results.key = key;
+    //         results.label = label;
+    //         results.created = json.query.created;
+    //         app.updateForecastCard(results);
+    //       });
+    //     }
+    //   });
+    // }
+    // // Fetch the latest data.
+    // $.ajax({
+    //   url: url + '?' + $.param(query),
+    //   headers: {
+    //     'Authorization': auth_header,
+    //     'X-Yahoo-App-Id': app_id
+    //   },
+    //   method: 'GET',
+    //   success: function (data) {
+    //     console.log(data);
+    //     var results = data;
+    //     app.updateForecastCard(results);
+    //   }
+    // });
   };
 
   // Iterate all of the cards and attempt to get the latest forecast data
-  app.updateForecasts = function() {
+  app.updateForecasts = function () {
     var keys = Object.keys(app.visibleCards);
-    keys.forEach(function(key) {
+    keys.forEach(function (key) {
       app.getForecast(key);
     });
   };
 
   // TODO add saveSelectedCities function here
   // Save list of cities to localStorage.
-  app.saveSelectedCities = function() {
+  app.saveSelectedCities = function () {
     var selectedCities = JSON.stringify(app.selectedCities);
     localStorage.selectedCities = selectedCities;
   };
 
-  app.getIconClass = function(weatherCode) {
+  app.getIconClass = function (weatherCode) {
     // Weather codes: https://developer.yahoo.com/weather/documentation.html#codes
     weatherCode = parseInt(weatherCode);
     switch (weatherCode) {
@@ -295,13 +363,13 @@
           code: 24
         },
         forecast: [
-          {code: 44, high: 86, low: 70},
-          {code: 44, high: 94, low: 73},
-          {code: 4, high: 95, low: 78},
-          {code: 24, high: 75, low: 89},
-          {code: 24, high: 89, low: 77},
-          {code: 44, high: 92, low: 79},
-          {code: 44, high: 89, low: 77}
+          { code: 44, high: 86, low: 70 },
+          { code: 44, high: 94, low: 73 },
+          { code: 4, high: 95, low: 78 },
+          { code: 24, high: 75, low: 89 },
+          { code: 24, high: 89, low: 77 },
+          { code: 44, high: 92, low: 79 },
+          { code: 44, high: 89, low: 77 }
         ]
       },
       atmosphere: {
@@ -331,7 +399,7 @@
   app.selectedCities = localStorage.selectedCities;
   if (app.selectedCities) {
     app.selectedCities = JSON.parse(app.selectedCities);
-    app.selectedCities.forEach(function(city) {
+    app.selectedCities.forEach(function (city) {
       app.getForecast(city.key, city.label);
     });
   } else {
@@ -342,7 +410,7 @@
      */
     app.updateForecastCard(initialWeatherForecast);
     app.selectedCities = [
-      {key: initialWeatherForecast.key, label: initialWeatherForecast.label}
+      { key: initialWeatherForecast.key, label: initialWeatherForecast.label }
     ];
     app.saveSelectedCities();
   }
@@ -350,7 +418,7 @@
   // TODO add service worker code here
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-             .register('./service-worker.js')
-             .then(function() { console.log('Service Worker Registered'); });
+      .register('./service-worker.js')
+      .then(function () { console.log('Service Worker Registered'); });
   }
 })();
