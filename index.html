@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -9,7 +9,7 @@
   <title>KE WEATHER</title>
   <link rel="stylesheet" type="text/css" href="styles/inline.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
-  
+
   <!-- TODO add manifest here -->
   <link rel="manifest" href="/manifest.json">
   <!-- Add to home screen for Safari on iOS -->
@@ -19,7 +19,9 @@
   <link rel="apple-touch-icon" href="images/icons/icon-152x152.png">
   <meta name="msapplication-TileImage" content="images/icons/icon-144x144.png">
   <meta name="msapplication-TileColor" content="#2F3BA2">
+  <meta name="theme-color" content="#2F3BA2">
 </head>
+
 <body>
 
   <header class="header">
@@ -31,7 +33,7 @@
   <main class="main">
     <div class="card cardTemplate weather-forecast" hidden>
       <div class="city-key" hidden></div>
-      <div class="card-last-updated" ></div>
+      <div class="card-last-updated"></div>
       <div class="location"></div>
       <div class="date"></div>
       <div class="description"></div>
@@ -157,13 +159,16 @@
   </div>
 
   <!-- Uncomment the line below when ready to test with fake data -->
-  <script src="scripts/app.js" async></script>
+  <script type="text/javascript" src="bower_components/crypto-js/crypto-js.js"></script>
   <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+  <script src="scripts/appcopy.js" async></script>
+
   <script type="text/javascript">
-    $(document).ready(function() { 
-     $(".selectCityToAdd").select2();
+    $(document).ready(function () {
+      $(".selectCityToAdd").select2();
     });
   </script>
 </body>
+
 </html>
