@@ -39,7 +39,7 @@
       app.selectedCities = [];
     }
     app.getForecast(key, label);
-    app.selectedCities.push({ key: key, label: label });
+    app.selectedCities.push({ key, label });
     app.saveSelectedCities();
     app.toggleAddDialog(false);
   });
@@ -69,13 +69,19 @@
   // doesn't already exist, it's cloned from the template.
   app.updateForecastCard = function (data) {
     var dataLastUpdated = new Date(data.created);
-    var sunrise = data.channel.astronomy.sunrise;
-    var sunset = data.channel.astronomy.sunset;
-    var current = data.channel.item.condition;
-    var humidity = data.channel.atmosphere.humidity;
-    var wind = data.channel.wind;
+    var sunrise = data.current_observation.astronomy.sunrise;
+    var sunset = data.current_observation.astronomy.sunset;
+    var current = data.current_observation.condition;
+    var humidity = data.current_observation.atmosphere.humidity;
+    var wind = data.current_observation.wind;
 
     var card = app.visibleCards[data.key];
+    if (card) {
+      // remove old card
+      const pNode = document.querySelector('main');
+      const cNode = pNode.removeChild(card);
+      card = undefined;
+    };
     if (!card) {
       card = app.cardTemplate.cloneNode(true);
       card.classList.remove('cardTemplate');
@@ -103,7 +109,7 @@
     card.querySelector('.date').textContent = current.date;
     card.querySelector('.current .icon').classList.add(app.getIconClass(current.code));
     card.querySelector('.current .temperature .value').textContent =
-      Math.round((current.temp - 32) / 1.8000);
+      Math.round((current.temperature - 32) / 1.8000);
     card.querySelector('.current .sunrise').textContent = sunrise;
     card.querySelector('.current .sunset').textContent = sunset;
     card.querySelector('.current .humidity').textContent =
@@ -116,7 +122,7 @@
     today = today.getDay();
     for (var i = 0; i < 7; i++) {
       var nextDay = nextDays[i];
-      var daily = data.channel.item.forecast[i];
+      var daily = data.forecasts[i];
       if (daily && nextDay) {
         nextDay.querySelector('.date').textContent =
           app.daysOfWeek[(i + today) % 7];
@@ -149,117 +155,83 @@
    * request goes through, then the card gets updated a second time with the
    * freshest data.
    */
-  app.getForecast = function (key, label) {
-    var statement = 'select * from weather.forecast where woeid=' + key;
-    var url = 'https://query.yahooapis.com/v1/public/yql?format=json&q=' +
-      statement;
+  app.getForecast = function (key, label, latitude, longitude) {
+
+    let url = 'https://weather-ydn-yql.media.yahoo.com/forecastrss';
+    let method = 'GET';
+    let app_id = 'Xri1A47e';
+    let consumer_key = 'dj0yJmk9U24wd2RrTlRuaThjJmQ9WVdrOVdISnBNVUUwTjJVbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PWNj';
+    let consumer_secret = '1352c7414fb16aedf163ec6c1d86fda3f306043d';
+    let concat = '&';
+    let query = latitude && longitude ? { 'lat': latitude, 'lon': longitude, 'format': 'json' } : { 'location': label, 'format': 'json' };
+    let oauth = {
+      'oauth_consumer_key': consumer_key,
+      'oauth_nonce': Math.random().toString(36).substring(2),
+      'oauth_signature_method': 'HMAC-SHA1',
+      'oauth_timestamp': parseInt(new Date().getTime() / 1000).toString(),
+      'oauth_version': '1.0'
+    };
+
+    let merged = {};
+    $.extend(merged, query, oauth);
+    // Note the sorting here is required
+    var merged_arr = Object.keys(merged).sort().map(function (k) {
+      return [k + '=' + encodeURIComponent(merged[k])];
+    });
+    let signature_base_str = method
+      + concat + encodeURIComponent(url)
+      + concat + encodeURIComponent(merged_arr.join(concat));
+
+    let composite_key = encodeURIComponent(consumer_secret) + concat;
+    let hash = CryptoJS.HmacSHA1(signature_base_str, composite_key);
+    let signature = hash.toString(CryptoJS.enc.Base64);
+
+    oauth['oauth_signature'] = signature;
+    let auth_header = 'OAuth ' + Object.keys(oauth).map(function (k) {
+      return [k + '="' + oauth[k] + '"'];
+    }).join(',');
+
     // TODO add cache logic here
+    let networkDataReceived = false;
     if ('caches' in window) {
       /*
        * Check if the service worker has already cached this city's weather
        * data. If the service worker has the data, then display the cached
        * data while the app fetches the latest data.
        */
-      caches.match(url).then(function (response) {
-        if (response) {
-          response.json().then(function updateFromCache(json) {
-            var results = json.query.results;
-            results.key = key;
-            results.label = label;
-            results.created = json.query.created;
+      const resource = url + '?' + $.param(query);
+      caches.match(resource).then(function (response) {
+        //don't overwrite network data
+        if (response && !networkDataReceived) {
+          response.json().then(function (results) {
+            results.key = key || results.location.woeid;
+            results.label = label || results.location.city + "," + results.location.country.slice(0, 2);
             app.updateForecastCard(results);
           });
         }
-      });
+      }).catch(function (err) {
+        console.error(err);
+
+      })
     }
     // Fetch the latest data.
-    var request = new XMLHttpRequest();
+    $.ajax({
+      url: url + '?' + $.param(query),
+      headers: {
+        'Authorization': auth_header,
+        'X-Yahoo-App-Id': app_id
+      },
+      method: 'GET',
+      success: function (data) {
+        console.log(data);
 
-    request.onreadystatechange = function () {
-      if (request.readyState === XMLHttpRequest.DONE) {
-        if (request.status === 200) {
-          var response = JSON.parse(request.response);
-          var results = response.query.results;
-          results.key = key;
-          results.label = label;
-          results.created = response.query.created;
-          app.updateForecastCard(results);
-        }
-      } else {
-        // Return the initial weather forecast since no data is available.
-        app.updateForecastCard(initialWeatherForecast);
-      }
-    };
-    request.open('GET', url);
-    request.send();
-
-    // let url = 'https://weather-ydn-yql.media.yahoo.com/forecastrss';
-    // let method = 'GET';
-    // let app_id = 'Xri1A47e';
-    // let consumer_key = 'dj0yJmk9U24wd2RrTlRuaThjJmQ9WVdrOVdISnBNVUUwTjJVbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PWNj';
-    // let consumer_secret = '1352c7414fb16aedf163ec6c1d86fda3f306043d';
-    // let concat = '&';
-    // let query = { 'location': 'sunnyvale,ca', 'format': 'json' };
-    // let oauth = {
-    //   'oauth_consumer_key': consumer_key,
-    //   'oauth_nonce': Math.random().toString(36).substring(2),
-    //   'oauth_signature_method': 'HMAC-SHA1',
-    //   'oauth_timestamp': parseInt(new Date().getTime() / 1000).toString(),
-    //   'oauth_version': '1.0'
-    // };
-
-    // let merged = {};
-    // $.extend(merged, query, oauth);
-    // // Note the sorting here is required
-    // var merged_arr = Object.keys(merged).sort().map(function (k) {
-    //   return [k + '=' + encodeURIComponent(merged[k])];
-    // });
-    // let signature_base_str = method
-    //   + concat + encodeURIComponent(url)
-    //   + concat + encodeURIComponent(merged_arr.join(concat));
-
-    // let composite_key = encodeURIComponent(consumer_secret) + concat;
-    // let hash = CryptoJS.HmacSHA1(signature_base_str, composite_key);
-    // let signature = hash.toString(CryptoJS.enc.Base64);
-
-    // oauth['oauth_signature'] = signature;
-    // let auth_header = 'OAuth ' + Object.keys(oauth).map(function (k) {
-    //   return [k + '="' + oauth[k] + '"'];
-    // }).join(',');
-
-    // // TODO add cache logic here
-    // if ('caches' in window) {
-    //   /*
-    //    * Check if the service worker has already cached this city's weather
-    //    * data. If the service worker has the data, then display the cached
-    //    * data while the app fetches the latest data.
-    //    */
-    //   caches.match(url).then(function (response) {
-    //     if (response) {
-    //       response.json().then(function updateFromCache(json) {
-    //         var results = json.query.results;
-    //         results.key = key;
-    //         results.label = label;
-    //         results.created = json.query.created;
-    //         app.updateForecastCard(results);
-    //       });
-    //     }
-    //   });
-    // }
-    // // Fetch the latest data.
-    // $.ajax({
-    //   url: url + '?' + $.param(query),
-    //   headers: {
-    //     'Authorization': auth_header,
-    //     'X-Yahoo-App-Id': app_id
-    //   },
-    //   method: 'GET',
-    //   success: function (data) {
-    //     console.log(data);
-    //     var results = data;
-    //     app.updateForecastCard(results);
-    //   }
-    // });
+        data.key = key || data.location.woeid;
+        data.label = label || data.location.city + "," + data.location.country.slice(0, 2);
+        data.created = data.current_observation.pubDate;
+        networkDataReceived = true;
+        app.updateForecastCard(data);
+      },
+    });
   };
 
   // Iterate all of the cards and attempt to get the latest forecast data
@@ -270,7 +242,7 @@
     });
   };
 
-  // TODO add saveSelectedCities function here
+
   // Save list of cities to localStorage.
   app.saveSelectedCities = function () {
     var selectedCities = JSON.stringify(app.selectedCities);
@@ -340,6 +312,28 @@
         return 'partly-cloudy-day';
     }
   };
+  /**
+   * Get user location to fetch current weather stats
+   * function getUserLocation() checks if geolocation is enabled then gets 
+   * the currentUser location's longtitude and latitude 
+   * it then calls getForecast with lat and long
+   */
+  app.getUserLocation = function () {
+    if (!("geolocation" in navigator)) {
+      console.log("Geolocation api is not supported");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function (position) {
+      console.log("Showing weather for ", position);
+      app.getForecast(undefined, undefined, position.coords.latitude, position.coords.longitude)
+    },
+      function (err) {
+        console.log("Can't retrieve user location", err);
+
+      })
+  };
+
+
 
   /*
    * Fake weather data that is presented when the user first uses the app,
@@ -347,31 +341,22 @@
    * discussion.
    */
   var initialWeatherForecast = {
-    key: '1528488',
+    key: '1528693',
     label: 'Nairobi, KE',
     created: '2017-12-20T08:23:12Z',
-    channel: {
+    current_observation: {
       astronomy: {
         sunrise: "5:43 am",
         sunset: "8:21 pm"
       },
-      item: {
-        condition: {
-          text: "Windy",
-          date: "Thu, 21 Jul 2017 09:00 PM EAT",
-          temp: 56,
-          code: 24
-        },
-        forecast: [
-          { code: 44, high: 86, low: 70 },
-          { code: 44, high: 94, low: 73 },
-          { code: 4, high: 95, low: 78 },
-          { code: 24, high: 75, low: 89 },
-          { code: 24, high: 89, low: 77 },
-          { code: 44, high: 92, low: 79 },
-          { code: 44, high: 89, low: 77 }
-        ]
+
+      condition: {
+        text: "Windy",
+        date: "Thu, 21 Jul 2017 09:00 PM EAT",
+        temperature: 56,
+        code: 24
       },
+
       atmosphere: {
         humidity: 56
       },
@@ -379,7 +364,16 @@
         speed: 25,
         direction: 195
       }
-    }
+    },
+    forecasts: [
+      { code: 44, high: 86, low: 70 },
+      { code: 44, high: 94, low: 73 },
+      { code: 4, high: 95, low: 78 },
+      { code: 24, high: 75, low: 89 },
+      { code: 24, high: 89, low: 77 },
+      { code: 44, high: 92, low: 79 },
+      { code: 44, high: 89, low: 77 }
+    ],
   };
   // TODO uncomment line below to test app with fake data
   // app.updateForecastCard(initialWeatherForecast);
@@ -413,6 +407,7 @@
       { key: initialWeatherForecast.key, label: initialWeatherForecast.label }
     ];
     app.saveSelectedCities();
+    app.getUserLocation();
   }
 
   // TODO add service worker code here
