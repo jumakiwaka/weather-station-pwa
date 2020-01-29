@@ -1,0 +1,25 @@
+{
+  "name": "pwa",
+  "version": "1.0.0",
+  "description": "PWA Weather App",
+  "main": "service-worker.js",
+  "dependencies": {
+    "bower": "^1.8.8"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "bower": "bower install crypto-js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jumakiwaka/PWA.git"
+  },
+  "keywords": [],
+  "author": "Juma Kiwaka",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jumakiwaka/PWA/issues"
+  },
+  "homepage": "https://github.com/jumakiwaka/PWA#readme"
+}
