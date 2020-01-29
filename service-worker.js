@@ -17,7 +17,8 @@ var cacheName = 'weatherPWA-final-1';
 var filesToCache = [
   '/',
   '/index.html',
-  '/scripts/app.js',
+  '/offline.html',
+  '/scripts/appcopy.js',
   '/styles/inline.css',
   '/images/clear.png',
   '/images/cloudy-scattered-showers.png',
@@ -31,24 +32,36 @@ var filesToCache = [
   '/images/sleet.png',
   '/images/snow.png',
   '/images/thunderstorm.png',
-  '/images/wind.png'
+  '/images/wind.png',
+  'https://code.jquery.com/jquery-3.2.1.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js',
+  '/bower_components/crypto-js/crypto-js.js',
+  '/manifest.json',
+  '/favicon.ico',
 ];
 
-self.addEventListener('install', function(e) {
+self.addEventListener('install', function (e) {
   console.log('[ServiceWorker] Install');
-  e.waitUntil(
-    caches.open(cacheName).then(function(cache) {
+  const cacheFiles = async () => {
+    try {
+      const cache = await caches.open(cacheName);
       console.log('[ServiceWorker] Caching app shell');
-      return cache.addAll(filesToCache);
-    })
-  );
-});
 
-self.addEventListener('activate', function(e) {
+      return cache.addAll(filesToCache);
+    } catch (error) {
+      console.error("Failed to cache", error);
+      return;
+    }
+
+  }
+  e.waitUntil(cacheFiles());
+  self.skipWaiting();
+})
+self.addEventListener('activate', function (e) {
   console.log('[ServiceWorker] Activate');
   e.waitUntil(
-    caches.keys().then(function(keyList) {
-      return Promise.all(keyList.map(function(key) {
+    caches.keys().then(function (keyList) {
+      return Promise.all(keyList.map(function (key) {
         if (key !== cacheName && key !== dataCacheName) {
           console.log('[ServiceWorker] Removing old cache', key);
           return caches.delete(key);
@@ -69,9 +82,9 @@ self.addEventListener('activate', function(e) {
   return self.clients.claim();
 });
 
-self.addEventListener('fetch', function(e) {
+self.addEventListener('fetch', async (e) => {
   console.log('[Service Worker] Fetch', e.request.url);
-  var dataUrl = 'https://query.yahooapis.com/v1/public/yql';
+  let dataUrl = 'https://weather-ydn-yql.media.yahoo.com/forecastrss';
   if (e.request.url.indexOf(dataUrl) > -1) {
     /*
      * When the request URL contains dataUrl, the app is asking for fresh
@@ -80,9 +93,10 @@ self.addEventListener('fetch', function(e) {
      * network" strategy:
      * https://jakearchibald.com/2014/offline-cookbook/#cache-then-network
      */
+
     e.respondWith(
-      caches.open(dataCacheName).then(function(cache) {
-        return fetch(e.request).then(function(response){
+      caches.open(dataCacheName).then(function (cache) {
+        return fetch(e.request).then(function (response) {
           cache.put(e.request.url, response.clone());
           return response;
         });
@@ -94,9 +108,20 @@ self.addEventListener('fetch', function(e) {
      * "Cache, falling back to the network" offline strategy:
      * https://jakearchibald.com/2014/offline-cookbook/#cache-falling-back-to-network
      */
+
     e.respondWith(
-      caches.match(e.request).then(function(response) {
-        return response || fetch(e.request);
+      caches.match(e.request).then(function (response) {
+        return response || fetch(e.request).then(function (response) {
+          if (response.ok) {
+            return caches.open(cacheName).then(function (cache) {
+              cache.put(e.request.url, response.clone());
+              return response
+            })
+          }
+
+        }).catch(err => {
+          return fetch('offline.html');
+        })
       })
     );
   }
