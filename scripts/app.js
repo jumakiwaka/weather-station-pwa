@@ -133,6 +133,7 @@
           Math.round((daily.low - 32) / 1.8000);
       }
     }
+    card.focus();
     if (app.isLoading) {
       app.spinner.setAttribute('hidden', false);
       app.container.removeAttribute('hidden');
@@ -223,8 +224,6 @@
       },
       method: 'GET',
       success: function (data) {
-        console.log(data);
-
         data.key = key || data.location.woeid;
         data.label = label || data.location.city + "," + data.location.country.slice(0, 2);
         data.created = data.current_observation.pubDate;
@@ -324,7 +323,8 @@
       return;
     }
     navigator.geolocation.getCurrentPosition(function (position) {
-      console.log("Showing weather for ", position);
+      // console.log("Showing weather for ", position);
+      //passing undefined twice to skip key and label parameters
       app.getForecast(undefined, undefined, position.coords.latitude, position.coords.longitude)
     },
       function (err) {

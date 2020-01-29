@@ -18,7 +18,7 @@ var filesToCache = [
   '/',
   '/index.html',
   '/offline.html',
-  '/scripts/appcopy.js',
+  '/scripts/app.js',
   '/styles/inline.css',
   '/images/clear.png',
   '/images/cloudy-scattered-showers.png',
